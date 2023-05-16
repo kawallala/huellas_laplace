@@ -6,6 +6,11 @@ class SerialReader():
     self.ser = serial.Serial('/dev/ttyUSB0', 9600, timeout=1)
     self.ser.reset_input_buffer()
 
+  def reset(self) -> None:
+    self.ser.close()
+    self.ser = serial.Serial('/dev/ttyUSB0', 9600, timeout=1)
+    self.ser.reset_input_buffer()
+
   def readFromSerial(self) -> str:
     while True:
       if self.ser.in_waiting > 0:
