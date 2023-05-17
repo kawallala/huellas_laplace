@@ -74,6 +74,8 @@ void loop() {
       Serial.print("Enrolling ID #");
       Serial.println(id);
       while (!  getFingerprintEnroll() );
+      id = 0;
+      break;
     case 2:
       while(mantener){
         if (Serial.available() > 0) {
@@ -114,7 +116,7 @@ uint8_t getFingerprintEnroll() {
       Serial.println("Image taken");
       break;
     case FINGERPRINT_NOFINGER:
-      Serial.print(".");
+      Serial.println("WAITING");
       break;
     case FINGERPRINT_PACKETRECIEVEERR:
       Serial.println("Communication error");
@@ -168,7 +170,7 @@ uint8_t getFingerprintEnroll() {
       Serial.println("Image taken");
       break;
     case FINGERPRINT_NOFINGER:
-      Serial.print(".");
+      Serial.println("WAITING");
       break;
     case FINGERPRINT_PACKETRECIEVEERR:
       Serial.println("Communication error");
