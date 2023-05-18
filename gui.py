@@ -1,12 +1,14 @@
 # Multi-frame tkinter application v2.3
 import json
+import threading
 import time
 import tkinter as tk
-from tkinter import ttk
-import threading
-from tkinter import BooleanVar, Variable
+from tkinter import BooleanVar, Variable, ttk
+import estado
 from applicationController import applicationController
 from persona import Person
+
+
 class App(tk.Tk):
     def __init__(self, controller: applicationController):
         tk.Tk.__init__(self)
@@ -29,7 +31,7 @@ class App(tk.Tk):
 
 
 class StartPage(tk.Frame):
-    def __init__(self, master, controller:applicationController, data):
+    def __init__(self, master, controller: applicationController, data):
         self.controller = controller
         tk.Frame.__init__(self, master)
         tk.Label(self, text="Bienvenido a laplace").grid(
@@ -135,33 +137,90 @@ class Enrolling(tk.Frame):
 class Detect(tk.Frame):
     def __init__(self, master, controller: applicationController, data):
         self.controller = controller
-
+        self.master = master
         tk.Frame.__init__(self, master)
         # TODO Agrandar font de texto
-        self.label = ttk.Label(self, text="Iniciando detección")
-        cancel_button = tk.Button(self, text="Cancelar")
+        self.label = tk.Label(self, text="Iniciando detección")
+        # TODO Funcionalidad cancelar
+        self.cancel_button = tk.Button(self, text="Cancelar", command=self.cancel_deteccion, state="disabled")
 
         self.label.grid(row=0, column=0, columnspan=2)
-        cancel_button.grid(row=1, column=0, sticky="nesw")
+        self.cancel_button.grid(row=1, column=0, sticky="nesw")
 
         self.rowconfigure(0, weight=2)
         self.rowconfigure(1, weight=1)
         self.columnconfigure(0, weight=1)
 
     def process(self):
-        self.after(1000, lambda: self.start_deteccion(self.label))
+        self.after(100, lambda: self.start_deteccion(self.label))
 
-    def start_deteccion(self, label: ttk.Label) -> None:
+    def cancel_deteccion(self):
+        estado.cancel_detect = True
+        self.thread.join()
+        estado.cancel_detect = False
+        self.master.switch_frame(StartPage, self.controller)
+
+    def start_deteccion(self, label: tk.Label) -> None:
         self.person = Variable()
         self.person.set(None)
         self.person.trace_add("write", self.check_person)
-        thread = threading.Thread(
-            target=lambda: self.controller.detect_finger(self.label, self.person))
-        thread.start()
+        self.thread = threading.Thread(
+            target=lambda: self.controller.detect_finger(self.label, self.cancel_button, self.person))
+        self.thread.start()
 
     def check_person(self, *args):
+        # TODO caerse (comenzar de nuevo) cuando persona no es encontrada?
+        # try:
         person_instance = Person(**json.loads(self.person.get()))
-        self.label.configure(text= "Persona nombre: " + person_instance.name + " telefono: " + person_instance.phone)
+        self.master.switch_frame(
+            Detected, self.controller, data=person_instance)
+        # except:
+        #     self.label.configure(
+        #         text="Hubo un error, empezando la deteccion nuevamente")
+        #     self.after(1000, lambda: self.start_deteccion(self.label))
+
+
+class Detected(tk.Frame):
+    def __init__(self, master, controller: applicationController, data: Person):
+        self.controller = controller
+        self.person = data
+        self.master = master
+        tk.Frame.__init__(self, master)
+        title = tk.Label(self, text="Se detecto a la siguiente persona")
+        person_data = tk.Label(self, text="Nombre: " +
+                               self.person.name + " Telefono: " + self.person.phone)
+        self.sending_label = tk.Label(self)
+        cancel_button = tk.Button(
+            self, text="Cancelar", command=lambda: master.switch_frame(Detect, self.controller))
+        confirm_button = tk.Button(self, text="Continuar", command= self.send_message )
+
+        title.grid(row=0, column=0, columnspan=2)
+        person_data.grid(row=1, column=0, columnspan=2)
+        self.sending_label.grid(row=2, column=0, columnspan=2)
+        cancel_button.grid(row=3, column=0, sticky="nesw")
+        confirm_button.grid(row=3, column=1, sticky="nesw")
+
+        self.rowconfigure([0, 1, 2], weight=2)
+        self.rowconfigure(3, weight=3)
+        self.columnconfigure([0,1], weight=1)
+
+    def send_message(self):
+        self.sending_label.configure(text="Enviando mensaje")
+        self.sending_label.update()
+        self.sent = BooleanVar()
+        self.sent.set(False)
+        self.sent.trace_add("write", self.check_sent)
+        thread = threading.Thread(
+            target=lambda: self.controller.send_message(self.person, self.sent))
+        thread.start()
+
+    def check_sent(self, *args):
+        if self.sent.get():
+            self.sending_label.configure(text="Mensaje enviado!")
+            self.after(1000, lambda: self.master.switch_frame(Detect, self.controller))
+
+    def process(self):
+        pass
 
 
 class Delete(tk.Frame):

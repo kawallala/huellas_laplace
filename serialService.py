@@ -1,6 +1,6 @@
 import serial
 import time
-
+import estado
 
 class SerialReader():
     def __init__(self) -> None:
@@ -24,13 +24,21 @@ class SerialReader():
     # TODO log de lo conseguido desde el serial
     def readUntilString(self, string, timeout=10) -> bool:
         line = ""
-        start_time = time.time()
-        while time.time() - start_time < timeout:
-            line = self.readFromSerial()
-            print(line)
-            if (line == string):
-                return True
-        return False
+        if timeout > 0:
+            start_time = time.time()
+            while time.time() - start_time < timeout:
+                line = self.readFromSerial()
+                print(line)
+                if (line == string):
+                    return True
+            return False
+        else:
+            while line != string:
+                if estado.cancel_detect == True:
+                    break
+                line = self.readFromSerial()
+                print(line)
+            return line == string
 
     def readNumberOfLines(self, number) -> str:
         c = 0
