@@ -1,14 +1,14 @@
 # Multi-frame tkinter application v2.3
+import json
 import time
 import tkinter as tk
 from tkinter import ttk
 import threading
-import asyncio
-from tkinter import BooleanVar
-
-
+from tkinter import BooleanVar, Variable
+from applicationController import applicationController
+from persona import Person
 class App(tk.Tk):
-    def __init__(self, controller):
+    def __init__(self, controller: applicationController):
         tk.Tk.__init__(self)
         width = self.winfo_screenwidth()
         height = self.winfo_screenheight()
@@ -18,7 +18,7 @@ class App(tk.Tk):
         self._frame = None
         self.switch_frame(StartPage, controller)
 
-    def switch_frame(self, frame_class, controller, data={}):
+    def switch_frame(self, frame_class: tk.Frame, controller: applicationController, data={}):
         """Destroys current frame and replaces it with a new one."""
         new_frame = frame_class(self, controller, data)
         if self._frame is not None:
@@ -29,7 +29,7 @@ class App(tk.Tk):
 
 
 class StartPage(tk.Frame):
-    def __init__(self, master, controller, data):
+    def __init__(self, master, controller:applicationController, data):
         self.controller = controller
         tk.Frame.__init__(self, master)
         tk.Label(self, text="Bienvenido a laplace").grid(
@@ -95,7 +95,7 @@ class Enroll(tk.Frame):
 
 
 class Enrolling(tk.Frame):
-    def __init__(self, master, controller, data):
+    def __init__(self, master, controller: applicationController, data):
         self.controller = controller
         self.master = master
         self.data = data
@@ -119,13 +119,13 @@ class Enrolling(tk.Frame):
         self.enrolled.set(False)
         self.enrolled.trace_add("write", self.check_complete)
         thread = threading.Thread(
-            target=lambda: self.controller.enrollPerson(self.label, self.data, self.enrolled))
+            target=lambda: self.controller.enroll_person(self.label, self.data, self.enrolled))
         thread.start()
 
     def check_complete(self, *args):
         # TODO
         if self.enrolled.get():
-            self.label.configure(text="lista la wea")
+            self.label.configure(text="Enrolado!")
             self.label.update
         else:
             self.label.configure(text="se callo la wea :c")
@@ -133,26 +133,35 @@ class Enrolling(tk.Frame):
 
 
 class Detect(tk.Frame):
-    def __init__(self, master, controller, data):
+    def __init__(self, master, controller: applicationController, data):
+        self.controller = controller
+
         tk.Frame.__init__(self, master)
-        self.label = ttk.Label(self, text="text")
+        # TODO Agrandar font de texto
+        self.label = ttk.Label(self, text="Iniciando detección")
+        cancel_button = tk.Button(self, text="Cancelar")
+
         self.label.grid(row=0, column=0, columnspan=2)
-        tk.Button(self, text="Cancelar",
-                  command=lambda: self.cambiar()).grid(row=1, column=0, sticky="nesw")
-        tk.Button(self, text="Continuar",
-                  command=lambda: master.switch_frame(StartPage, controller)).grid(row=1, column=1, sticky="nesw")
+        cancel_button.grid(row=1, column=0, sticky="nesw")
 
         self.rowconfigure(0, weight=2)
         self.rowconfigure(1, weight=1)
-        self.columnconfigure([0, 1], weight=1)
-
-    def cambiar(self) -> None:
-        self.label.configure(text="text2")
-        self.label.update()
-        return
+        self.columnconfigure(0, weight=1)
 
     def process(self):
-        pass
+        self.after(1000, lambda: self.start_deteccion(self.label))
+
+    def start_deteccion(self, label: ttk.Label) -> None:
+        self.person = Variable()
+        self.person.set(None)
+        self.person.trace_add("write", self.check_person)
+        thread = threading.Thread(
+            target=lambda: self.controller.detect_finger(self.label, self.person))
+        thread.start()
+
+    def check_person(self, *args):
+        person_instance = Person(**json.loads(self.person.get()))
+        self.label.configure(text= "Persona nombre: " + person_instance.name + " telefono: " + person_instance.phone)
 
 
 class Delete(tk.Frame):
