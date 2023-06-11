@@ -5,7 +5,7 @@ from tkinter import ttk
 from persona import Person
 from tkinter import BooleanVar, Variable
 from serialService import SerialReader
-from personaRepo import PersonRepository
+from persona_repo import PersonRepository
 from whatsapp_service import WhatsappService
 
 
@@ -16,7 +16,7 @@ class applicationController:
         self.repo = repo
 
     def enroll_person(self, label: tk.Label, data: dict, enrolled: BooleanVar) -> bool:
-        id = self.repo.get_all_count() + 1
+        id = self.repo.get_next_id()
         person = Person(data["name"], data["phone"])
 
         # TODO cambiar por excepciones
@@ -66,8 +66,12 @@ class applicationController:
     def cancel_deteccion(self) -> None:
         self.serialReader.writeInSerial("999")
 
-    def send_message(self, person: Person, sent: BooleanVar) -> None:
-        message: str = "El alumno " + person.name + " ha ingresado a Laplace"
+    def send_message(
+        self, person: Person, sent: BooleanVar, entering: bool = True
+    ) -> None:
+        if entering:
+            message: str = f"EL alumno {person.name} ha ingresado a Laplace"
+        else:
+            message: str = f"EL alumno {person.name} ha salido de Laplace"
         self.whatsappService.send_message(person.phone, message)
-        sent.set(True)
         return
