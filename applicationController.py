@@ -4,7 +4,7 @@ import json
 from tkinter import ttk
 from persona import Person
 from tkinter import BooleanVar, Variable
-from serialService import SerialReader
+from serial_service import SerialReader
 from persona_repo import PersonRepository
 from whatsapp_service import WhatsappService
 
