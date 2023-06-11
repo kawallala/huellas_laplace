@@ -6,11 +6,13 @@ from persona import Person
 from tkinter import BooleanVar, Variable
 from serialService import SerialReader
 from personaRepo import PersonRepository
+from whatsapp_service import WhatsappService
 
 
 class applicationController:
     def __init__(self, reader: SerialReader, repo: PersonRepository) -> None:
         self.serialReader = reader
+        self.whatsappService = WhatsappService()
         self.repo = repo
 
     def enroll_person(self, label: tk.Label, data: dict, enrolled: BooleanVar) -> bool:
@@ -30,8 +32,7 @@ class applicationController:
                         label.update()
                         time.sleep(3)
                         if self.serialReader.readUntilString("WAITING"):
-                            label.configure(
-                                text="Coloque dedo en el sensor nuevamente")
+                            label.configure(text="Coloque dedo en el sensor nuevamente")
                             label.update()
                             if self.serialReader.readUntilString("Stored!"):
                                 self.repo.add(person, id)
@@ -43,7 +44,9 @@ class applicationController:
     def verifyPersonData(self, name: str, phone: str) -> bool:
         return name != "" and phone != ""
 
-    def detect_finger(self, label: tk.Label, cancel_button: tk.Button, person: Variable) -> None:
+    def detect_finger(
+        self, label: tk.Label, cancel_button: tk.Button, person: Variable
+    ) -> None:
         if self.serialReader.readUntilString("LISTO CARGA"):
             self.serialReader.writeInSerial("2")
             if self.serialReader.readUntilString("No finger detected"):
@@ -59,11 +62,12 @@ class applicationController:
                     return
         self.cancel_deteccion()
         return
-    
+
     def cancel_deteccion(self) -> None:
         self.serialReader.writeInSerial("999")
 
     def send_message(self, person: Person, sent: BooleanVar) -> None:
-        time.sleep(3)
+        message: str = "El alumno " + person.name + " ha ingresado a Laplace"
+        self.whatsappService.send_message(person.phone, message)
         sent.set(True)
         return
