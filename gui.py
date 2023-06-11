@@ -15,12 +15,15 @@ class App(tk.Tk):
         width = self.winfo_screenwidth()
         height = self.winfo_screenheight()
         self.geometry("%dx%d" % (width, height))
+        self.resizable(False, True)
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(0, weight=1)
         self._frame = None
         self.switch_frame(StartPage, controller)
 
-    def switch_frame(self, frame_class: tk.Frame, controller: applicationController, data={}):
+    def switch_frame(
+        self, frame_class: tk.Frame, controller: applicationController, data={}
+    ):
         """Destroys current frame and replaces it with a new one."""
         new_frame = frame_class(self, controller, data)
         if self._frame is not None:
@@ -34,16 +37,27 @@ class StartPage(tk.Frame):
     def __init__(self, master, controller: applicationController, data):
         self.controller = controller
         tk.Frame.__init__(self, master)
-        tk.Label(self, text="Bienvenido a laplace").grid(
-            row=0, column=0, columnspan=4)
-        tk.Button(self, text="Enrolar",
-                  command=lambda: master.switch_frame(Enroll, self.controller)).grid(row=1, column=0, sticky="nesw")
-        tk.Button(self, text="Detectar",
-                  command=lambda: master.switch_frame(Detect, self.controller)).grid(row=1, column=1, sticky="nesw")
-        tk.Button(self, text="Eliminar",
-                  command=lambda: master.switch_frame(Delete, self.controller)).grid(row=1, column=2, sticky="nesw")
-        tk.Button(self, text="Limpiar DB",
-                  command=lambda: master.switch_frame(Clear, self.controller)).grid(row=1, column=3, sticky="nesw")
+        tk.Label(self, text="Bienvenido a laplace").grid(row=0, column=0, columnspan=4)
+        tk.Button(
+            self,
+            text="Enrolar",
+            command=lambda: master.switch_frame(Enroll, self.controller),
+        ).grid(row=1, column=0, sticky="nesw")
+        tk.Button(
+            self,
+            text="Detectar",
+            command=lambda: master.switch_frame(Detect, self.controller),
+        ).grid(row=1, column=1, sticky="nesw")
+        tk.Button(
+            self,
+            text="Eliminar",
+            command=lambda: master.switch_frame(Delete, self.controller),
+        ).grid(row=1, column=2, sticky="nesw")
+        tk.Button(
+            self,
+            text="Limpiar DB",
+            command=lambda: master.switch_frame(Clear, self.controller),
+        ).grid(row=1, column=3, sticky="nesw")
 
         self.rowconfigure(0, weight=2)
         self.rowconfigure(1, weight=1)
@@ -64,10 +78,14 @@ class Enroll(tk.Frame):
         self.name_field = tk.Entry(self)
         phone_label = tk.Label(self, text="Telefono")
         self.phone_field = tk.Entry(self)
-        cancel_button = tk.Button(self, text="Cancelar",
-                                  command=lambda: self.master.switch_frame(StartPage, self.controller))
-        continue_button = tk.Button(self, text="Continuar",
-                                    command=lambda: self.verifyPersonData())
+        cancel_button = tk.Button(
+            self,
+            text="Cancelar",
+            command=lambda: self.master.switch_frame(StartPage, self.controller),
+        )
+        continue_button = tk.Button(
+            self, text="Continuar", command=lambda: self.verifyPersonData()
+        )
 
         # Definimos posiciones de elementos
         form_title.grid(row=0, column=0, columnspan=4)
@@ -85,12 +103,13 @@ class Enroll(tk.Frame):
         self.columnconfigure([0, 1, 2, 3], weight=1)
 
     def verifyPersonData(self):
-        """ Envia datos a controller para validacion de datos de persona """
+        """Envia datos a controller para validacion de datos de persona"""
         name = self.name_field.get()
         phone = self.phone_field.get()
         if self.controller.verifyPersonData(name, phone):
-            self.master.switch_frame(Enrolling, self.controller, data={
-                                     "name": name, "phone": phone})
+            self.master.switch_frame(
+                Enrolling, self.controller, data={"name": name, "phone": phone}
+            )
 
     def process(self):
         pass
@@ -104,7 +123,10 @@ class Enrolling(tk.Frame):
         tk.Frame.__init__(self, master)
         self.label = tk.Label(self, text="Comenzando enrolamiento")
         cancel_button = tk.Button(
-            self, text="Cancelar", command=lambda: master.switch_frame(StartPage, controller))
+            self,
+            text="Cancelar",
+            command=lambda: master.switch_frame(StartPage, controller),
+        )
 
         self.label.grid(row=0, column=0)
         cancel_button.grid(row=1, column=0, sticky="nesw")
@@ -121,7 +143,10 @@ class Enrolling(tk.Frame):
         self.enrolled.set(False)
         self.enrolled.trace_add("write", self.check_complete)
         thread = threading.Thread(
-            target=lambda: self.controller.enroll_person(self.label, self.data, self.enrolled))
+            target=lambda: self.controller.enroll_person(
+                self.label, self.data, self.enrolled
+            )
+        )
         thread.start()
 
     def check_complete(self, *args):
@@ -133,7 +158,7 @@ class Enrolling(tk.Frame):
             self.label.configure(text="se callo la wea :c")
             self.label.update
 
-
+#TODO Asegurarse de que al menos hay una persona en la DB
 class Detect(tk.Frame):
     def __init__(self, master, controller: applicationController, data):
         self.controller = controller
@@ -142,7 +167,9 @@ class Detect(tk.Frame):
         # TODO Agrandar font de texto
         self.label = tk.Label(self, text="Iniciando detección")
         # TODO Funcionalidad cancelar
-        self.cancel_button = tk.Button(self, text="Cancelar", command=self.cancel_deteccion, state="disabled")
+        self.cancel_button = tk.Button(
+            self, text="Cancelar", command=self.cancel_deteccion, state="disabled"
+        )
 
         self.label.grid(row=0, column=0, columnspan=2)
         self.cancel_button.grid(row=1, column=0, sticky="nesw")
@@ -161,23 +188,27 @@ class Detect(tk.Frame):
         self.master.switch_frame(StartPage, self.controller)
 
     def start_deteccion(self, label: tk.Label) -> None:
+        self.found = BooleanVar()
+        self.found.set(False)
         self.person = Variable()
         self.person.set(None)
-        self.person.trace_add("write", self.check_person)
+        self.found.trace_add("write", self.check_person)
         self.thread = threading.Thread(
-            target=lambda: self.controller.detect_finger(self.label, self.cancel_button, self.person))
+            target=lambda: self.controller.detect_finger(
+                self.label, self.cancel_button, self.person, self.found
+            )
+        )
         self.thread.start()
 
     def check_person(self, *args):
-        # TODO caerse (comenzar de nuevo) cuando persona no es encontrada?
-        # try:
-        person_instance = Person(**json.loads(self.person.get()))
-        self.master.switch_frame(
-            Detected, self.controller, data=person_instance)
-        # except:
-        #     self.label.configure(
-        #         text="Hubo un error, empezando la deteccion nuevamente")
-        #     self.after(1000, lambda: self.start_deteccion(self.label))
+        if self.found.get():
+            person_instance = Person(**json.loads(self.person.get()))
+            self.master.switch_frame(Detected, self.controller, data=person_instance)
+        else:
+            self.label.configure(
+                text="No se encontro a la persona, empezando la deteccion nuevamente"
+            )
+            self.after(500, lambda: self.start_deteccion(self.label))
 
 
 class Detected(tk.Frame):
@@ -187,12 +218,16 @@ class Detected(tk.Frame):
         self.master = master
         tk.Frame.__init__(self, master)
         title = tk.Label(self, text="Se detecto a la siguiente persona")
-        person_data = tk.Label(self, text="Nombre: " +
-                               self.person.name + " Telefono: " + self.person.phone)
+        person_data = tk.Label(
+            self, text="Nombre: " + self.person.name + " Telefono: " + self.person.phone
+        )
         self.sending_label = tk.Label(self)
         cancel_button = tk.Button(
-            self, text="Cancelar", command=lambda: master.switch_frame(Detect, self.controller))
-        confirm_button = tk.Button(self, text="Continuar", command= self.send_message )
+            self,
+            text="Cancelar",
+            command=lambda: master.switch_frame(Detect, self.controller),
+        )
+        confirm_button = tk.Button(self, text="Continuar", command=self.send_message)
 
         title.grid(row=0, column=0, columnspan=2)
         person_data.grid(row=1, column=0, columnspan=2)
@@ -202,7 +237,7 @@ class Detected(tk.Frame):
 
         self.rowconfigure([0, 1, 2], weight=2)
         self.rowconfigure(3, weight=3)
-        self.columnconfigure([0,1], weight=1)
+        self.columnconfigure([0, 1], weight=1)
 
     def send_message(self):
         self.sending_label.configure(text="Enviando mensaje")
@@ -211,7 +246,8 @@ class Detected(tk.Frame):
         self.sent.set(False)
         self.sent.trace_add("write", self.check_sent)
         thread = threading.Thread(
-            target=lambda: self.controller.send_message(self.person, self.sent))
+            target=lambda: self.controller.send_message(self.person, self.sent)
+        )
         thread.start()
 
     def check_sent(self, *args):
@@ -227,10 +263,12 @@ class Delete(tk.Frame):
     def __init__(self, master, controller, data):
         tk.Frame.__init__(self, master)
         tk.Label(self, text="Eliminando").grid(row=0, column=0, columnspan=2)
-        tk.Button(self, text="Cancelar",
-                  command=lambda: master.switch_frame(StartPage)).grid(row=1, column=0, sticky="nesw")
-        tk.Button(self, text="Continuar",
-                  command=lambda: master.switch_frame(StartPage)).grid(row=1, column=1, sticky="nesw")
+        tk.Button(
+            self, text="Cancelar", command=lambda: master.switch_frame(StartPage)
+        ).grid(row=1, column=0, sticky="nesw")
+        tk.Button(
+            self, text="Continuar", command=lambda: master.switch_frame(StartPage)
+        ).grid(row=1, column=1, sticky="nesw")
 
         self.rowconfigure(0, weight=2)
         self.rowconfigure(1, weight=1)
@@ -244,10 +282,12 @@ class Clear(tk.Frame):
     def __init__(self, master, controller, data):
         tk.Frame.__init__(self, master)
         tk.Label(self, text="Limpiando DB").grid(row=0, column=0, columnspan=2)
-        tk.Button(self, text="Cancelar",
-                  command=lambda: master.switch_frame(StartPage)).grid(row=1, column=0, sticky="nesw")
-        tk.Button(self, text="Continuar",
-                  command=lambda: master.switch_frame(StartPage)).grid(row=1, column=1, sticky="nesw")
+        tk.Button(
+            self, text="Cancelar", command=lambda: master.switch_frame(StartPage)
+        ).grid(row=1, column=0, sticky="nesw")
+        tk.Button(
+            self, text="Continuar", command=lambda: master.switch_frame(StartPage)
+        ).grid(row=1, column=1, sticky="nesw")
 
         self.rowconfigure(0, weight=2)
         self.rowconfigure(1, weight=1)

@@ -45,7 +45,7 @@ class applicationController:
         return name != "" and phone != ""
 
     def detect_finger(
-        self, label: tk.Label, cancel_button: tk.Button, person: Variable
+        self, label: tk.Label, cancel_button: tk.Button, person: Variable, found: BooleanVar
     ) -> None:
         if self.serialReader.readUntilString("LISTO CARGA"):
             self.serialReader.writeInSerial("2")
@@ -54,11 +54,17 @@ class applicationController:
                 label.update()
                 cancel_button.configure(state="normal")
                 cancel_button.update()
-                if self.serialReader.readUntilString("Found ID #", timeout=0):
+                detected = self.serialReader.readUntilString(["Found ID #", "Did not find a match"] , timeout=0)
+                if detected == "Found ID #":
                     self.cancel_deteccion()
                     line = self.serialReader.readNumberOfLines(1)
                     person_json = json.dumps(self.repo.get(int(line)).__dict__)
                     person.set(person_json)
+                    found.set(True)
+                    return
+                elif detected == "Did not find a match":
+                    found.set(False)
+                    self.cancel_deteccion()
                     return
         self.cancel_deteccion()
         return
@@ -74,4 +80,5 @@ class applicationController:
         else:
             message: str = f"EL alumno {person.name} ha salido de Laplace"
         self.whatsappService.send_message(person.phone, message)
+        sent.set(True)
         return

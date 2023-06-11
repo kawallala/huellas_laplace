@@ -23,23 +23,30 @@ class SerialReader:
         self.ser.write(str(text).encode())
 
     # TODO log de lo conseguido desde el serial
-    def readUntilString(self, string, timeout=10) -> bool:
+    def readUntilString(self, strings, timeout=5):
+        if isinstance(strings, str):
+            strings = [strings]  # Convert a single string to a list with one element
+
         line = ""
         if timeout > 0:
             start_time = time.time()
             while time.time() - start_time < timeout:
                 line = self.readFromSerial()
                 print(line)
-                if line == string:
-                    return True
-            return False
+                if line in strings:
+                    return True if len(strings) == 1 else line
+            return False 
         else:
-            while line != string:
-                if estado.cancel_detect == True:
+            while line not in strings:
+                if estado.cancel_detect:
                     break
                 line = self.readFromSerial()
                 print(line)
-            return line == string
+            if line in strings:
+                return True if len(strings) == 1 else line
+            else:
+                return False
+
 
     def readNumberOfLines(self, number) -> str:
         c = 0
