@@ -150,8 +150,9 @@ class Enrolling(tk.Frame):
         if self.enrolled.get():
             self.label.configure(text="Enrolado!")
             self.label.update
+            self.after(1000, self.master.switch_frame, StartPage, self.controller)
         else:
-            self.label.configure(text="se callo la wea :c")
+            self.label.configure(text="Ha ocurrido un error")
             self.label.update
 
 
@@ -259,6 +260,8 @@ class Detected(tk.Frame):
         if self.sent.get():
             self.sending_label.configure(text="Mensaje enviado!")
             self.after(2000, self.master.switch_frame, Detect, self.controller)
+        else:
+            self.sending_label.configure(text="Ocurrio un error")
 
     def return_detect(self):
         self.master.switch_frame(Detect, self.controller)
@@ -331,12 +334,12 @@ class ForDeletion(tk.Frame):
         cancel_button = tk.Button(
             self,
             text="Cancelar",
-            command=lambda: self.delete_person(data),
+            command=lambda: master.switch_frame(StartPage, self.controller),
         )
         delete_button = tk.Button(
             self,
             text="Eliminar",
-            command=lambda: master.switch_frame(StartPage, self.controller),
+            command=lambda: self.delete_person(data),
         )
 
         title.grid(row=0, column=0, columnspan=2)
@@ -349,5 +352,15 @@ class ForDeletion(tk.Frame):
 
     def process(self):
         pass
+
     def delete_person(self, id: int):
-        
+        self.deleted = BooleanVar()
+        self.deleted.set(False)
+        self.deleted.trace_add("write", self.check_deleted)
+        thread = threading.Thread(
+            target=lambda: self.controller.delete_person(id, self.deleted)
+        )
+        thread.start()
+
+    def check_deleted(self, *args):
+        self.master.switch_frame(Delete, self.controller)

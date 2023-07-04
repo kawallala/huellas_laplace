@@ -9,9 +9,14 @@ from persona_repo import PersonRepository
 from whatsapp_service import WhatsappService
 import logging
 
+
 class applicationController:
     def __init__(self, reader: SerialReader, repo: PersonRepository) -> None:
-        logging.basicConfig(filename='myapp.log', level=logging.INFO, format='%(asctime)s %(levelname)s:%(message)s')
+        logging.basicConfig(
+            filename="myapp.log",
+            level=logging.INFO,
+            format="%(asctime)s %(levelname)s:%(message)s",
+        )
         self.serialReader = reader
         self.whatsappService = WhatsappService()
         self.repo = repo
@@ -42,6 +47,18 @@ class applicationController:
         enrolled.set(False)
         return
 
+    def delete_person(self, id: int, deleted: BooleanVar):
+        if self.serialReader.readUntilString("LISTO CARGA"):
+            self.serialReader.writeInSerial("3")  # Modo borrado
+            if self.serialReader.readUntilString("ID"):
+                self.serialReader.writeInSerial(str(id))
+                if self.serialReader.readUntilString("Deleted!"):
+                    self.repo.delete(id)
+                    deleted.set(True)
+                    return
+        deleted.set(False)
+        return
+
     def verifyPersonData(self, name: str, phone: str) -> bool:
         return name != "" and phone != ""
 
@@ -52,16 +69,22 @@ class applicationController:
         return self.repo.get_all()
 
     def detect_finger(
-        self, label: tk.Label, cancel_button: tk.Button, person: Variable, found: BooleanVar
+        self,
+        label: tk.Label,
+        cancel_button: tk.Button,
+        person: Variable,
+        found: BooleanVar,
     ) -> None:
         if self.serialReader.readUntilString("LISTO CARGA"):
-            self.serialReader.writeInSerial("2") #Modo deteccion en sensor
+            self.serialReader.writeInSerial("2")  # Modo deteccion en sensor
             if self.serialReader.readUntilString("No finger detected"):
                 label.configure(text="Coloque su dedo en el sensor")
                 label.update()
                 cancel_button.configure(state="normal")
                 cancel_button.update()
-                detected = self.serialReader.readUntilString(["Found ID #", "Did not find a match"] , timeout=0)
+                detected = self.serialReader.readUntilString(
+                    ["Found ID #", "Did not find a match"], timeout=0
+                )
                 if detected == "Found ID #":
                     self.cancel_deteccion()
                     line = self.serialReader.readNumberOfLines(1)
@@ -86,6 +109,7 @@ class applicationController:
             message: str = f"EL alumno {person.name} ha ingresado a Laplace"
         else:
             message: str = f"EL alumno {person.name} ha salido de Laplace"
+
         self.whatsappService.send_message(person.phone, message)
         sent.set(True)
         return
