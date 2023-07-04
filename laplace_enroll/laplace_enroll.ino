@@ -58,7 +58,7 @@ void loop() {
   switch (id) {
     case 0:
       Serial.println("LISTO CARGA");
-      // Se puede 1: Enrolar 2: Detectar 3: Limpiar DB
+      // Se puede 1: Enrolar 2: Detectar 3: Eliminar persona
       id = readnumber();
       break;
     case 1:
@@ -98,6 +98,16 @@ void loop() {
       id = 0;
       break;
     case 3:
+      Serial.println("ID");
+      id = readnumber();
+      if (id == 999) {// ID #0 not allowed, try again!
+         id = 0;
+         break;
+      }
+      Serial.print("Deleting ID #");
+      Serial.println(id);
+      deleteFingerprint(id);
+      Serial.println("Deleted!");
       id = 0;
       break;
     default:
@@ -330,4 +340,24 @@ int getFingerprintIDez() {
   Serial.print("Found ID #"); Serial.print(finger.fingerID);
   Serial.print(" with confidence of "); Serial.println(finger.confidence);
   return finger.fingerID;
+}
+
+uint8_t deleteFingerprint(uint8_t id) {
+  uint8_t p = -1;
+
+  p = finger.deleteModel(id);
+
+  if (p == FINGERPRINT_OK) {
+    Serial.println("Deleted!");
+  } else if (p == FINGERPRINT_PACKETRECIEVEERR) {
+    Serial.println("Communication error");
+  } else if (p == FINGERPRINT_BADLOCATION) {
+    Serial.println("Could not delete in that location");
+  } else if (p == FINGERPRINT_FLASHERR) {
+    Serial.println("Error writing to flash");
+  } else {
+    Serial.print("Unknown error: 0x"); Serial.println(p, HEX);
+  }
+
+  return p;
 }
