@@ -4,6 +4,7 @@ import threading
 import time
 import tkinter as tk
 from tkinter import BooleanVar, Variable, ttk
+
 import estado
 from applicationController import applicationController
 from persona import Person
@@ -53,15 +54,10 @@ class StartPage(tk.Frame):
             text="Eliminar",
             command=lambda: master.switch_frame(Delete, self.controller),
         ).grid(row=1, column=2, sticky="nesw")
-        tk.Button(
-            self,
-            text="Limpiar DB",
-            command=lambda: master.switch_frame(Clear, self.controller),
-        ).grid(row=1, column=3, sticky="nesw")
 
         self.rowconfigure(0, weight=2)
         self.rowconfigure(1, weight=1)
-        self.columnconfigure([0, 1, 2, 3], weight=1)
+        self.columnconfigure([0, 1, 2], weight=1)
 
     def process(self):
         pass
@@ -158,9 +154,10 @@ class Enrolling(tk.Frame):
             self.label.configure(text="se callo la wea :c")
             self.label.update
 
-#TODO Asegurarse de que al menos hay una persona en la DB
+
+# TODO Asegurarse de que al menos hay una persona en la DB
 class Detect(tk.Frame):
-    def __init__(self, master, controller: applicationController, data):
+    def __init__(self, master, controller: applicationController, data=None):
         self.controller = controller
         self.master = master
         tk.Frame.__init__(self, master)
@@ -227,48 +224,124 @@ class Detected(tk.Frame):
             text="Cancelar",
             command=lambda: master.switch_frame(Detect, self.controller),
         )
-        confirm_button = tk.Button(self, text="Continuar", command=self.send_message)
+        confirm_button_entrance = tk.Button(
+            self, text="Entrando", command=lambda: self.send_message()
+        )
+        confirm_button_exit = tk.Button(
+            self, text="Saliendo", command=lambda: self.send_message(entrance=False)
+        )
 
-        title.grid(row=0, column=0, columnspan=2)
-        person_data.grid(row=1, column=0, columnspan=2)
-        self.sending_label.grid(row=2, column=0, columnspan=2)
+        title.grid(row=0, column=0, columnspan=3)
+        person_data.grid(row=1, column=0, columnspan=3)
+        self.sending_label.grid(row=2, column=0, columnspan=3)
         cancel_button.grid(row=3, column=0, sticky="nesw")
-        confirm_button.grid(row=3, column=1, sticky="nesw")
+        confirm_button_entrance.grid(row=3, column=1, sticky="nesw")
+        confirm_button_exit.grid(row=3, column=2, sticky="nesw")
 
         self.rowconfigure([0, 1, 2], weight=2)
         self.rowconfigure(3, weight=3)
-        self.columnconfigure([0, 1], weight=1)
+        self.columnconfigure([0, 1, 2], weight=1)
 
-    def send_message(self):
+    def send_message(self, entrance=True):
         self.sending_label.configure(text="Enviando mensaje")
         self.sending_label.update()
         self.sent = BooleanVar()
         self.sent.set(False)
         self.sent.trace_add("write", self.check_sent)
         thread = threading.Thread(
-            target=lambda: self.controller.send_message(self.person, self.sent)
+            target=lambda: self.controller.send_message(
+                self.person, self.sent, entering=entrance
+            )
         )
         thread.start()
 
     def check_sent(self, *args):
         if self.sent.get():
             self.sending_label.configure(text="Mensaje enviado!")
-            self.after(1000, lambda: self.master.switch_frame(Detect, self.controller))
+            self.after(2000, self.master.switch_frame, Detect, self.controller)
+
+    def return_detect(self):
+        self.master.switch_frame(Detect, self.controller)
 
     def process(self):
         pass
 
 
 class Delete(tk.Frame):
-    def __init__(self, master, controller, data):
+    def __init__(self, master: App, controller: applicationController, data):
         tk.Frame.__init__(self, master)
-        tk.Label(self, text="Eliminando").grid(row=0, column=0, columnspan=2)
-        tk.Button(
-            self, text="Cancelar", command=lambda: master.switch_frame(StartPage)
-        ).grid(row=1, column=0, sticky="nesw")
-        tk.Button(
-            self, text="Continuar", command=lambda: master.switch_frame(StartPage)
-        ).grid(row=1, column=1, sticky="nesw")
+        self.controller = controller
+        self.master = master
+        self.tree = ttk.Treeview(self, column=("c1", "c2"), show="headings")
+        self.tree.heading("#0", text="ID")
+        self.tree.column("#0", minwidth=50, width=50, anchor="center")
+        self.tree.heading("c1", text="Nombre")
+        self.tree.column("c1", minwidth=100, width=100, anchor="center")
+        self.tree.heading("c2", text="Telefono")
+        self.tree.column("c2", minwidth=100, width=100, anchor="center")
+        data = controller.get_all_person_data()
+        for row in data:
+            self.tree.insert(
+                "", "end", text=row.doc_id, values=(row["name"], row["phone"])
+            )
+        self.vsb = ttk.Scrollbar(self, orient="vertical", command=self.tree.yview)
+        cancel_button = tk.Button(
+            self,
+            text="Cancelar",
+            command=lambda: master.switch_frame(StartPage, controller),
+        )
+        self.tree.grid(row=0, column=1, columnspan=8, sticky="nesw")
+        self.vsb.grid(row=0, column=9, sticky="nsw")
+        cancel_button.grid(row=1, column=0, columnspan=10, sticky="nesw")
+
+        self.rowconfigure(0, weight=2)
+        self.rowconfigure(1, weight=1)
+        self.columnconfigure([i for i in range(10)], weight=1)
+
+    def process(self):
+        self.tree.bind("<<TreeviewSelect>>", self.row_selected)
+        self.tree.configure(yscrollcommand=self.vsb.set)
+
+    def row_selected(self, event):
+        selected_item = self.tree.focus()  # Get the selected item (row)
+        item_data = self.tree.item(selected_item)
+        print(item_data)
+        row_values = item_data["values"]
+
+        # Perform desired actions with the row values
+        print("Selected Row:", row_values)
+        # Add your custom code here
+        person = self.controller.get_person_data(item_data["text"])
+        self.master.switch_frame(ForDeletion, self.controller, int(item_data["text"]))
+
+
+class ForDeletion(tk.Frame):
+    def __init__(self, master, controller: applicationController, data: int):
+        tk.Frame.__init__(self, master)
+        self.master = master
+        self.controller = controller
+        self.person = self.controller.get_person_data(data)
+        title = tk.Label(
+            self,
+            text="Seguro que quiere eliminar a:\n\n\nNombre: "
+            + self.person.name
+            + " Telefono: "
+            + self.person.phone,
+        )
+        cancel_button = tk.Button(
+            self,
+            text="Cancelar",
+            command=lambda: self.delete_person(data),
+        )
+        delete_button = tk.Button(
+            self,
+            text="Eliminar",
+            command=lambda: master.switch_frame(StartPage, self.controller),
+        )
+
+        title.grid(row=0, column=0, columnspan=2)
+        cancel_button.grid(row=1, column=0, sticky="nesw")
+        delete_button.grid(row=1, column=1, sticky="nesw")
 
         self.rowconfigure(0, weight=2)
         self.rowconfigure(1, weight=1)
@@ -276,22 +349,5 @@ class Delete(tk.Frame):
 
     def process(self):
         pass
-
-
-class Clear(tk.Frame):
-    def __init__(self, master, controller, data):
-        tk.Frame.__init__(self, master)
-        tk.Label(self, text="Limpiando DB").grid(row=0, column=0, columnspan=2)
-        tk.Button(
-            self, text="Cancelar", command=lambda: master.switch_frame(StartPage)
-        ).grid(row=1, column=0, sticky="nesw")
-        tk.Button(
-            self, text="Continuar", command=lambda: master.switch_frame(StartPage)
-        ).grid(row=1, column=1, sticky="nesw")
-
-        self.rowconfigure(0, weight=2)
-        self.rowconfigure(1, weight=1)
-        self.columnconfigure([0, 1], weight=1)
-
-    def process(self):
-        pass
+    def delete_person(self, id: int):
+        

@@ -32,3 +32,6 @@ class PersonRepository:
     
   def get_all_count(self) -> int:
     return len(self.db)
+  
+  def get_all(self):
+    return self.person_table.all()

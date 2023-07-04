@@ -7,10 +7,11 @@ from tkinter import BooleanVar, Variable
 from serial_service import SerialReader
 from persona_repo import PersonRepository
 from whatsapp_service import WhatsappService
-
+import logging
 
 class applicationController:
     def __init__(self, reader: SerialReader, repo: PersonRepository) -> None:
+        logging.basicConfig(filename='myapp.log', level=logging.INFO, format='%(asctime)s %(levelname)s:%(message)s')
         self.serialReader = reader
         self.whatsappService = WhatsappService()
         self.repo = repo
@@ -44,11 +45,17 @@ class applicationController:
     def verifyPersonData(self, name: str, phone: str) -> bool:
         return name != "" and phone != ""
 
+    def get_person_data(self, id: int):
+        return self.repo.get(id)
+
+    def get_all_person_data(self):
+        return self.repo.get_all()
+
     def detect_finger(
         self, label: tk.Label, cancel_button: tk.Button, person: Variable, found: BooleanVar
     ) -> None:
         if self.serialReader.readUntilString("LISTO CARGA"):
-            self.serialReader.writeInSerial("2")
+            self.serialReader.writeInSerial("2") #Modo deteccion en sensor
             if self.serialReader.readUntilString("No finger detected"):
                 label.configure(text="Coloque su dedo en el sensor")
                 label.update()
