@@ -203,6 +203,7 @@ class Detect(tk.Frame):
             person_instance = Person(**json.loads(self.person.get()))
             self.master.switch_frame(Detected, self.controller, data=person_instance)
         else:
+            self.cancel_button.configure(state="disabled")
             self.label.configure(
                 text="No se encontro a la persona, empezando la deteccion nuevamente"
             )
