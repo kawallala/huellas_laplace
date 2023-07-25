@@ -20,10 +20,12 @@ class SerialReader:
                 return line
 
     def writeInSerial(self, text) -> None:
+        logging.debug(f"Escribiendo en el puerto serial: {text}")
         self.ser.write(str(text).encode())
 
     # TODO log de lo conseguido desde el serial
     def readUntilString(self, strings, timeout=10):
+        logging.debug(f"Detectando las cadenas: {strings}")
         if isinstance(strings, str):
             strings = [
                 strings
@@ -44,6 +46,8 @@ class SerialReader:
         else:
             while line not in strings:
                 if estado.cancel_detect:
+                    logging.warning("Cancelado por usuario")
+                    self.writeInSerial("999")
                     break
                 line = self.readFromSerial()
                 logging.debug(f"Línea leída desde el serial: {line}")

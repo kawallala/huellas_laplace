@@ -79,22 +79,21 @@ void loop() {
       id = 0;
       break;
     case 2:
-      while (mantener) {
-        if (Serial.available() > 0) {
-          // read the incoming byte
-          int incomingByte = Serial.parseInt();
-
-          // check if the incoming byte is 254
-          if (incomingByte == 999) {
-            // exit the loop
-            mantener = false;
-            id = 0;
-            break;
-          }
-        }
-        getFingerprintID();
-        delay(50);
-      }
+//      while (mantener) {
+//        if (Serial.available() > 0) {
+//          // read the incoming byte
+//          int incomingByte = Serial.parseInt();
+//
+//          // check if the incoming byte is 254
+//          if (incomingByte == 999) {
+//            // exit the loop
+//            mantener = false;
+//            id = 0;
+//            break;
+//          }
+//        }
+      getFingerprintID();
+//      }
       id = 0;
       break;
     case 3:
@@ -261,22 +260,35 @@ uint8_t getFingerprintEnroll() {
 
 uint8_t getFingerprintID() {
   uint8_t p = finger.getImage();
-  switch (p) {
-    case FINGERPRINT_OK:
-      Serial.println("Image taken");
-      break;
-    case FINGERPRINT_NOFINGER:
-      Serial.println("No finger detected");
-      return p;
-    case FINGERPRINT_PACKETRECIEVEERR:
-      Serial.println("Communication error");
-      return p;
-    case FINGERPRINT_IMAGEFAIL:
-      Serial.println("Imaging error");
-      return p;
-    default:
-      Serial.println("Unknown error");
-      return p;
+  while (p != FINGERPRINT_OK) {
+    if (Serial.available() > 0) {
+          // read the incoming byte
+          int incomingByte = Serial.parseInt();
+
+          // check if the incoming byte is 254
+          if (incomingByte == 999) {
+            // exit the loop
+            return 999;
+          }
+        }
+    switch (p) {
+      case FINGERPRINT_OK:
+        Serial.println("Image taken");
+        break;
+      case FINGERPRINT_NOFINGER:
+        Serial.println("No finger detected");
+        break;
+      case FINGERPRINT_PACKETRECIEVEERR:
+        Serial.println("Communication error");
+        break;
+      case FINGERPRINT_IMAGEFAIL:
+        Serial.println("Imaging error");
+        break;
+      default:
+        Serial.println("Unknown error");
+        break;
+    }
+    p = finger.getImage();
   }
 
   // OK success!

@@ -96,43 +96,39 @@ class applicationController:
         found: BooleanVar,
     ) -> None:
         logging.info("Iniciando detección de huella...")
-        self.serialReader.writeInSerial("999")
-        logging.debug("Escrito 999 en el lector serial.")
-        detected =  self.serialReader.readUntilString(["LISTO CARGA", "No finger detected"])
-        if detected == "LISTO CARGA":
+        if self.serialReader.readUntilString("LISTO CARGA"):
+            logging.debug("Sensor preparando, iniciando modo deteccion")
             self.serialReader.writeInSerial("2")  # Modo deteccion en sensor
-            self.serialReader.readUntilString("No finger detected")
-        logging.debug("No se detectó ningún dedo en el sensor.")
-        label.configure(text="Coloque su dedo en el sensor")
-        label.update()
-        cancel_button.configure(state="normal")
-        cancel_button.update()
+            if self.serialReader.readUntilString("No finger detected"):
+                logging.debug("Sensor en modo deteccion")
+                label.configure(text="Coloque su dedo en el sensor")
+                label.update()
+                cancel_button.configure(state="normal")
+                cancel_button.update()
+                detected = self.serialReader.readUntilString(
+                    ["Found ID #", "Did not find a match"], timeout=0
+                )
 
-        detected = self.serialReader.readUntilString(
-            ["Found ID #", "Did not find a match"], timeout=0
-        )
-
-        if detected == "Found ID #":
-            logging.debug("Huella detectada y coincidencia encontrada.")
-            self.cancel_deteccion()
-            line = self.serialReader.readNumberOfLines(1)
-            person_json = json.dumps(self.repo.get(int(line)).__dict__)
-            person.set(person_json)
-            found.set(True)
-            logging.info("Huella detectada y coincidencia encontrada.")
-            return
-        elif detected == "Did not find a match":
-            logging.debug("Huella detectada, pero no se encontró coincidencia.")
-            self.cancel_deteccion()
-            found.set(False)
-            return
+                if detected == "Found ID #":
+                    logging.debug("Huella detectada y coincidencia encontrada.")
+                    line = self.serialReader.readNumberOfLines(1)
+                    person_json = json.dumps(self.repo.get(int(line)).__dict__)
+                    person.set(person_json)
+                    found.set(True)
+                    return
+                elif detected == "Did not find a match":
+                    logging.debug("Huella detectada, pero no se encontró coincidencia.")
+                    found.set(False)
+                    return
+            else:
+                logging.warning("Ha ocurrido un error al iniciar la deteccion.")
+                label.configure(text="Ha ocurrido un error al iniciar el sensor")
+                label.update()
+                found.set(False)
+                return
 
         logging.warning("No se pudo realizar la detección de huella.")
-        self.cancel_deteccion()
         return
-
-    def cancel_deteccion(self) -> None:
-        self.serialReader.writeInSerial("999")
 
     def send_message(
         self, person: Person, sent: BooleanVar, entering: bool = True
