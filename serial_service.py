@@ -1,12 +1,12 @@
 import serial
 import time
 import estado
-import logging
 
 class SerialReader:
-    def __init__(self) -> None:
+    def __init__(self, app_logger) -> None:
         self.ser = serial.Serial("/dev/ttyUSB0", 9600, timeout=1)
         self.ser.reset_input_buffer()
+        self.app_logger = app_logger
 
     def reset(self) -> None:
         self.ser.close()
@@ -20,12 +20,12 @@ class SerialReader:
                 return line
 
     def writeInSerial(self, text) -> None:
-        logging.debug(f"Escribiendo en el puerto serial: {text}")
+        self.app_logger.debug(f"Escribiendo en el puerto serial: {text}")
         self.ser.write(str(text).encode())
 
     # TODO log de lo conseguido desde el serial
     def readUntilString(self, strings, timeout=10):
-        logging.debug(f"Detectando las cadenas: {strings}")
+        self.app_logger.debug(f"Detectando las cadenas: {strings}")
         if isinstance(strings, str):
             strings = [
                 strings
@@ -36,26 +36,26 @@ class SerialReader:
             start_time = time.time()
             while time.time() - start_time < timeout:
                 line = self.readFromSerial()
-                logging.debug(f"Línea leída desde el serial: {line}")
+                self.app_logger.debug(f"Línea leída desde el serial: {line}")
                 if line in strings:
                     return True if len(strings) == 1 else line
-            logging.warning(
+            self.app_logger.warning(
                 "Tiempo de espera agotado, no se encontró ninguna de las cadenas especificadas."
             )
             return False
         else:
             while line not in strings:
                 if estado.cancel_detect:
-                    logging.warning("Cancelado por usuario")
+                    self.app_logger.warning("Cancelado por usuario")
                     self.writeInSerial("999")
                     break
                 line = self.readFromSerial()
-                logging.debug(f"Línea leída desde el serial: {line}")
+                self.app_logger.debug(f"Línea leída desde el serial: {line}")
 
             if line in strings:
                 return True if len(strings) == 1 else line
             else:
-                logging.warning("No se encontró ninguna de las cadenas especificadas.")
+                self.app_logger.warning("No se encontró ninguna de las cadenas especificadas.")
                 return False
 
     def readNumberOfLines(self, number) -> str:

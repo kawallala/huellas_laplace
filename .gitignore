@@ -7,3 +7,4 @@ myapp.log
 main.spec
 dist/
 build/
+logs/

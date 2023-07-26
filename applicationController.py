@@ -7,24 +7,20 @@ from tkinter import BooleanVar, Variable
 from serial_service import SerialReader
 from persona_repo import PersonRepository
 from whatsapp_service import WhatsappService
-import os
 import logging
 import logging.handlers
 
 
 class applicationController:
-    def __init__(self, reader: SerialReader, repo: PersonRepository) -> None:
-        logging.basicConfig(
-            filename="myapp.log",
-            level=logging.DEBUG,
-            format="%(asctime)s %(levelname)s:%(message)s",
-        )
+    def __init__(self, reader: SerialReader, repo: PersonRepository, app_logger, person_logger) -> None:
         self.serialReader = reader
         self.whatsappService = WhatsappService()
         self.repo = repo
+        self.app_logger = app_logger
+        self.person_logger = person_logger
 
     def enroll_person(self, label: tk.Label, data: dict, enrolled: BooleanVar) -> bool:
-        logging.info(f"Enrolando a persona {str(data)}")
+        self.app_logger.info(f"Enrolando a persona {str(data)}")
         id = self.repo.get_next_id()
         person = Person(data["name"], data["phone"])
 
@@ -48,34 +44,34 @@ class applicationController:
                                 )
                                 label.update()
                                 if self.serialReader.readUntilString("Stored!"):
-                                    logging.info(f"Persona Enrolada")
+                                    self.app_logger.info(f"Persona Enrolada")
                                     self.repo.add(person, id)
                                     enrolled.set(True)
                                     return
             enrolled.set(False)
             return
         except Exception as e:
-            logging.error("Ha ocurrido un error", exc_info=True)
+            self.app_logger.error("Ha ocurrido un error", exc_info=True)
 
     def delete_person(self, id: int, deleted: BooleanVar):
-        logging.info(f"Intentando eliminar persona con ID: {id}")
+        self.app_logger.info(f"Intentando eliminar persona con ID: {id}")
         self.serialReader.writeInSerial("999")
         if self.serialReader.readUntilString("LISTO CARGA"):
-            logging.debug("Recibida respuesta 'LISTO CARGA' del lector serial.")
+            self.app_logger.debug("Recibida respuesta 'LISTO CARGA' del lector serial.")
             self.serialReader.writeInSerial("3")  # Modo borrado
 
             if self.serialReader.readUntilString("ID"):
-                logging.debug("Recibida solicitud de 'ID' del lector serial.")
+                self.app_logger.debug("Recibida solicitud de 'ID' del lector serial.")
                 self.serialReader.writeInSerial(str(id))
 
                 if self.serialReader.readUntilString("Deleted!"):
-                    logging.debug(f"Persona con ID {id} eliminada exitosamente.")
+                    self.app_logger.debug(f"Persona con ID {id} eliminada exitosamente.")
                     self.repo.delete(id)
                     deleted.set(True)
-                    logging.info(f"Persona con ID {id} eliminada del repositorio.")
+                    self.app_logger.info(f"Persona con ID {id} eliminada del repositorio.")
                     return
 
-        logging.warning(f"No se pudo eliminar persona con ID {id}")
+        self.app_logger.warning(f"No se pudo eliminar persona con ID {id}")
         deleted.set(False)
         return
 
@@ -95,12 +91,12 @@ class applicationController:
         person: Variable,
         found: BooleanVar,
     ) -> None:
-        logging.info("Iniciando detección de huella...")
+        self.app_logger.info("Iniciando detección de huella...")
         if self.serialReader.readUntilString("LISTO CARGA"):
-            logging.debug("Sensor preparando, iniciando modo deteccion")
+            self.app_logger.debug("Sensor preparando, iniciando modo deteccion")
             self.serialReader.writeInSerial("2")  # Modo deteccion en sensor
             if self.serialReader.readUntilString("No finger detected"):
-                logging.debug("Sensor en modo deteccion")
+                self.app_logger.debug("Sensor en modo deteccion")
                 label.configure(text="Coloque su dedo en el sensor")
                 label.update()
                 cancel_button.configure(state="normal")
@@ -110,34 +106,38 @@ class applicationController:
                 )
 
                 if detected == "Found ID #":
-                    logging.debug("Huella detectada y coincidencia encontrada.")
+                    self.app_logger.debug("Huella detectada y coincidencia encontrada.")
                     line = self.serialReader.readNumberOfLines(1)
                     person_json = json.dumps(self.repo.get(int(line)).__dict__)
                     person.set(person_json)
                     found.set(True)
                     return
                 elif detected == "Did not find a match":
-                    logging.debug("Huella detectada, pero no se encontró coincidencia.")
+                    self.app_logger.debug("Huella detectada, pero no se encontró coincidencia.")
                     found.set(False)
                     return
             else:
-                logging.warning("Ha ocurrido un error al iniciar la deteccion.")
+                self.app_logger.warning("Ha ocurrido un error al iniciar la deteccion.")
                 label.configure(text="Ha ocurrido un error al iniciar el sensor")
                 label.update()
                 found.set(False)
                 return
 
-        logging.warning("No se pudo realizar la detección de huella.")
+        self.app_logger.warning("No se pudo realizar la detección de huella.")
         return
 
-    def send_message(
-        self, person: Person, sent: BooleanVar, entering: bool = True
-    ) -> None:
+    def send_message(self, person: Person, sent: BooleanVar, entering: bool = True) -> None:
         if entering:
             message: str = f"EL alumno {person.name} ha ingresado a Laplace"
+            self.person_logger.info(f"El alumno {person.name} ha ingresado a Laplace, numero: {person.phone}")
         else:
             message: str = f"EL alumno {person.name} ha salido de Laplace"
+            self.person_logger.info(f"El alumno {person.name} ha salido a Laplace, numero: {person.phone}")
 
         self.whatsappService.send_message(person.phone, message)
+
+        self.app_logger.info(f"Mensaje enviado a {person.name} ({person.phone}): {message}")
+        # Log the message sending
+
         sent.set(True)
         return
